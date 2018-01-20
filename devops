@@ -1,0 +1,24 @@
+1. Draw an extensive CI pipeline for your application. 
+   Provide CI pipeline with as many jobs needed to make sure your application is ready for production. 
+   Just provide the job name (with 1 sentence description of the job) and link to the job that it triggers. 
+   Pay attention that your application is written in Python, placed in github and is delivered as Docker image.
+
+   Solution:
+    * Git pull master branch from github.com (assuming that dev already merged to master the last version code)
+    * Run Docker build to build a image contains the fresh code been pulled from github.com
+    * Run Tests inside the Docker images (Running code tests on the build images to assure images been build as required).
+    * Publish the new build image to docker registery, tag the image both with the current version tag and latest.
+    * Connect to each Server in production, and pull the new image from docker registery
+    * Start the new image, and stop the old one
+    * Make a healthcheck to the instance and return it to production server pool.
+
+2. What problems Agile tries to solve? (short sentence)
+    * Inflexablity of developing process.
+    * Long developing cycles.
+    * Too much planing.
+    * Customer can't make improvement during the development.
+
+3. What problems DevOps tries to solve? (short sentence)
+    * Better Build, and pipeline process.
+    * Developers not focus only on developing.
+    * IT enginers, have a lack of knowladge in development and applications.
