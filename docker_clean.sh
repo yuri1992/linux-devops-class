@@ -1,4 +1,9 @@
 #/bin/bash
+# -----------------------------------------------
+# Description : Remove images/containers
+# Input		  : see help_msg
+# Exit code   : 0
+# -----------------------------------------------
 
 DOCKER_COMPONENT="";
 DRY_RUN_TEST_MODE=false
