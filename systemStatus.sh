@@ -97,13 +97,19 @@ function test_listen_ports() {
 		count_failed_test=`expr $count_failed_test + 1`
 		echo "Test Listen Ports - FAILED"
 	else
-		echo "Test Listen Ports  - PASSED"
+		echo "Test Listen Ports - PASSED"
 	fi
 }
 
 function test_rmps_installed() {
     # 5. Alert if number of installed rpms is higher than 3200
-	:
+	installed_rmps=`rpm -qa | wc -l`
+	if [ $installed_rmps -gt $RMPS_INSTALLED_MAX ]; then
+		count_failed_test=`expr $count_failed_test + 1`
+		echo "Test RMPS installed - FAILED"
+	else
+		echo "Test RMPS installed - PASSED"
+	fi
 }
 
 function test_idle_cpu() {
@@ -174,8 +180,9 @@ while [ true ]; do
 	test_file_system;
 	test_inodes_usage;
 	test_zombies_processes;
-	test_docker_alert;
+	#test_docker_alert;
 	test_listen_ports;
+	test_rmps_installed;
     test_free_mb;
     test_free_swap;
     test_idle_cpu;
