@@ -170,39 +170,73 @@ function test_process_count() {
 	fi
 }
 
+function help_msg() {
+	echo "systemStatus  [–c <file> | Configuration file describing limit of alerts]"
+}
 
+if [[ $# -gt 0 ]]; then
+	case $1 in
+    -c)
+		# Checking if configuration file found.
+		if [ ! -e "$2" ]; then
+			echo "Error: Configuration file not found."
+			exit 1
+		fi
+		
+		echo "Config file found parsing file"
+		# Reading Configuration file.
+		while IFS= read line ; do
+			if [[ "$line" =~ ^\#(.)* ]]; then
+				echo "DEBUG: found a note, skip"
+			elif [ -z "$line" ]; then
+				echo "DEBUG: found a empty line, skip"
+			elif [[ "$line" =~ ([[:space:]]*)?(.*)(<|>){1}([[:space:]]*)?([0-9]+){1} ]]; then
+				#Todo: Add case switch to handle each configuration needed.
+				echo "name: ${BASH_REMATCH[2]}";
+				echo "bigger/smaller: ${BASH_REMATCH[3]}";
+				echo "value: ${BASH_REMATCH[5]}";
+			fi
+		done <"$2"
+
+      shift 2
+      ;;    
+    -h|--help|help)
+      help_msg
+      exit 0
+      ;;
+    *)
+      echo "Unknown Argument $1"; exit 128 ;;
+  esac
+fi
 
 while [ true ]; do
 #----------- Get system statistics
-	# print a title
 	counter=`expr $counter + 1`
 	echo "Checking status [#$counter]..."
 	test_file_system;
 	test_inodes_usage;
 	test_zombies_processes;
-	#test_docker_alert;
+	test_docker_alert;
 	test_listen_ports;
 	test_rmps_installed;
     test_free_mb;
     test_free_swap;
     test_idle_cpu;
     test_process_count;
+
+	current_date=`date`
+	# print a summary of the status checks 
+	if [ $count_failed_test -gt 0 ]; then
+		# print Not OK (with date) and exit with error code 1
+		echo "====> SUM: Status NOT OK [$current_date]"	
+	else
+		# print OK (with date) and exit with success code 0
+		echo "====> SUM: Status OK [$current_date]"
+	fi
+	count_failed_test=0
+
 	sleep 2
 done
 
 
-#---------- Summary is left out of deamon run - infinite loop will not get here
-# init a var with system's date and time
-current_date=`date`
-
-# print a summary of the status checks 
-if [ $count_failed_test -gt 0 ]; then
-	# print Not OK (with date) and exit with error code 1
-	echo "====> SUM: Status NOT OK [$current_date]"	
-	exit 1
-else
-	# print OK (with date) and exit with success code 0
-	echo "====> SUM: Status OK [$current_date]"
-	exit 0
-fi
 
