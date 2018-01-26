@@ -9,15 +9,6 @@
 # Improve the systemStatus.sh script by adding more system verification and improvements as follow:
 
 # 7. Refactor the script:
-# a. Make each verification as a function. - DONE
-
-# b. The script should print which test named failed and which tests passed.
-
-# c. Instead of hardcoded thresholds, the script should get a config file with all the thresholds (get it
-#    with –c <file> flag). Every line in the file should look like this: [verification function name] [>
-#    or <] [value]. Here is an example:
-# The script should ignore comments or empty lines from the thresholds config file, also ignore
-# unknown thresholds with warning.
 
 # Thresholds for the checks
 CPU_IDLE_MIN=90	# Thresholds for CPU Idle percentage
@@ -56,10 +47,10 @@ function test_file_system () {
 	
 	# check if number of running dockers is higher than threshold
 	if [ -z "$file_system_usage" ]; then
-		echo "fs_usage: all fs usage under $FILE_SYSTEM_USAGE_MAX  - PASSED"
+		echo "fs_usage: all fs usage under $FILE_SYSTEM_USAGE_MAX%  - PASSED"
 	else
 		count_failed_test=`expr $count_failed_test + 1`
-		echo "fs_usage: fs usage is higher than $FILE_SYSTEM_USAGE_MAX - FAILED"
+		echo "fs_usage: fs usage is higher than $FILE_SYSTEM_USAGE_MAX% - FAILED"
 		#echo "$file_system_usage over threshold $FILE_SYSTEM_USAGE_MAX  - FAILED"
 	fi
 }
@@ -72,10 +63,10 @@ function test_inodes_usage() {
 
 	# check if number of running dockers is higher than threshold
 	if [ -z "$file_inodes_usage" ]; then
-		echo "inode_usage: all inode usage under threshold $INODES_USAGE_MAX  - PASSED"
+		echo "inode_usage: all inode usage under threshold $INODES_USAGE_MAX%  - PASSED"
 	else
 		count_failed_test=`expr $count_failed_test + 1`
-		echo "inode_usage: inode usage is higher than $FILE_SYSTEM_USAGE_MAX - FAILED"
+		echo "inode_usage: inode usage is higher than $INODES_USAGE_MAX% - FAILED"
 		#echo "$file_inodes_usage over threshold $INODES_USAGE_MAX  - FAILED"
 	fi
 }
@@ -146,7 +137,7 @@ function test_free_mb() {
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $free_mem_MB -lt $FREE_MEM_MB_MIN ]; then
-		echo "		-Not OK"
+		echo " - FAILED"
 		count_failed_test=`expr $count_failed_test + 1`
 	else 
 		echo " - PASSED"
@@ -161,7 +152,7 @@ function test_free_swap() {
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $free_swap_MB -lt $FREE_SWAP_MB_MIN ]; then
-		echo "		-Not OK"
+		echo " - FAILED"
 		count_failed_test=`expr $count_failed_test + 1`
 	else 
 		echo " - PASSED"
@@ -178,7 +169,7 @@ function test_process_count() {
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $proccess_count -gt $PROCCESS_COUNT_MAX ]; then
-		echo "		-Not OK"
+		echo " - FAILED"
 		count_failed_test=`expr $count_failed_test + 1`
 	else 
 		echo " - PASSED"
@@ -303,3 +294,4 @@ done
 
 
 
+exit 0
