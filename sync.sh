@@ -9,7 +9,7 @@
 
 #---------- Handle Signal Traps
 
-# iignore SIGINT and SIGTERM
+# Ignore SIGINT and SIGTERM
 trap : INT
 trap : TERM
 
@@ -57,16 +57,14 @@ scan_dir()
 
     # check if file
     if [ -f $1/$ITEM ]; then
-
-      #print_verbose "Scanning $1/$ITEM..."
       SCANNED=$((SCANNED + 1))
 
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
         # Files have sam content - check if premissions should be synced
-        if [ $IS_SYNC_PERM -gt 0 ]; then
+        if [ "$IS_SYNC_PERM" == true ]; then
           chown --reference=$1/$ITEM $2/$ITEM
           chmod --reference=$1/$ITEM $2/$ITEM
-          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"					
+          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
         else
           print_verbose "‘$1/$ITEM‘ is already synced"
         fi
@@ -91,7 +89,7 @@ scan_dir()
         fi
       fi
 
-    # else if folder - need to drill down sync
+    # else if folder - need to recursively drill down
     elif [[ -d $1/$ITEM ]]; then
       scan_dir $1/$ITEM $2/$ITEM
     fi
@@ -123,18 +121,10 @@ SYNCED=0
 while getopts ":hs:d:avyt" arg; do
   case "${arg}" in
     s)
-      if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
-        SOURCE=${OPTARG}
-      else
-        abort "${OPTARG}: invalid source argument" 11
-      fi
+      SOURCE=${OPTARG}
       ;;
     d)
-      if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
-        DEST=${OPTARG}
-      else
-        abort "${OPTARG}: invalid destination argument" 11
-      fi
+      DEST=${OPTARG}
       ;;
     a)
       IS_SYNC_PERM=true
@@ -159,6 +149,7 @@ done
 shift $((OPTIND-1))
 
 # Folder validation
+# If env param are not set - script should not default to cwd
 if [[ -z $SOURCE || -z $DEST ]]; then
   abort "Source or Destination folder are not defined" 12
 elif [ ! -d $SOURCE ]; then
@@ -172,7 +163,7 @@ fi
 # build copy options:
 if [ "$IS_SYNC_PERM" == true ]; then
   print_verbose "Enabled sync permissions"
-  COPYARGS=$COPYARGS'-a'
+  COPYARGS='-a'
   COPYPERMSTRING="(including permissions)"
 fi
 
@@ -182,5 +173,6 @@ echo
 echo "======== Summary ========"
 echo "Scanned $SCANNED files"
 echo "Syned $SYNCED files"
+echo
 
 exit 0
