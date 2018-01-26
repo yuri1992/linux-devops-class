@@ -152,7 +152,7 @@ done
 shift $((OPTIND-1))
 
 # Folder validation
-if [ -z $SOURCE ] || [ -z $DEST ]; then
+if [[ -z $SOURCE || -z $DEST ]]; then
   abort "Source or Destination folder are not defined" 12
 elif [ ! -d $SOURCE ]; then
   abort "'${SOURCE}' is not a folder" 12
