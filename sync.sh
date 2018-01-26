@@ -3,7 +3,8 @@
 # Description : Sync source dir to destination dir
 # Exit code:
 #   0 - Exit
-#   1 - Illegal argument issue
+#   11 - Illegal argument issue
+#   12 - Missing paramteres issue
 # ----------------------------------
 
 #---------- Handle Signal Traps
@@ -118,14 +119,14 @@ while getopts ":hs:d:avyt" arg; do
       if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
         SOURCE=${OPTARG}
       else
-        abort "${OPTARG}: invalid argument" 11
+        abort "${OPTARG}: invalid source argument" 11
       fi
       ;;
     d)
       if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
         DEST=${OPTARG}
       else
-        abort "${OPTARG}: invalid argument" 12
+        abort "${OPTARG}: invalid destination argument" 11
       fi
       ;;
     a)
@@ -144,18 +145,19 @@ while getopts ":hs:d:avyt" arg; do
       description && exit 0
       ;;
     *)
-      abort "$0: invalid option -- '$*'. Try '$0 -h' for more information." 13
+      abort "$0: invalid option -- '$*'. Try '$0 -h' for more information." 11
       ;;
   esac
 done
 shift $((OPTIND-1))
 
 # Folder validation
-if [ ! -d $SOURCE ]; then
-  abort "${SOURCE} is not a folder" 14
-fi
-if [ ! -d $DEST ]; then
-  abort "${DEST} is not a folder" 15
+if [ -z $SOURCE ] || [ -z $DEST ]; then
+  abort "Source or Destination folder are not defined" 12
+elif [ ! -d $SOURCE ]; then
+  abort "'${SOURCE}' is not a folder" 12
+elif  [ ! -d $DEST ]; then
+  abort "'${DEST}' is not a folder" 12
 fi
 
 #------------ Source folder scan
