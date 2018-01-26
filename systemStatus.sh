@@ -22,9 +22,10 @@ COUNTER_ITERATION=0 # Add check COUNTER_ITERATION to debug bg deamon runs
 test_docker_alert () {
 	# Alert if there are more than 100 docker containers running.
 
-	# Get number of running containers,  remove header line
-	running_dockers=`docker ps -f status=running | tail -n +2 | wc -l`
+	# Get number of running containers.
+	running_dockers=`docker ps -q -f status=running | wc -l`
 	echo -e "docker_containers: current running $running_dockers, threshold $DOCKER_CONTAINER_LIMIT \c"
+
 	# check if number of running dockers is higher than threshold
 	if [ $running_dockers -gt $DOCKER_CONTAINER_LIMIT ]; then
 		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
@@ -50,11 +51,9 @@ test_file_system () {
 
 test_inodes_usage() {
     # Alert if inodes usage is higher than 90% on a file system.
-	# Check file-systems size usage, alert if there is a file system with more than 90% usage.
+	# Check all inodes, filter inodes without IUse numeric value.
+	file_inodes_usage=`df -hi | awk '$5 != "-" && int($5) > $INODES_USAGE_MAX {print $1, int($5)}'`
 
-	file_inodes_usage=`df -hi | grep -v '-' | awk 'int($5) > $INODES_USAGE_MAX {print $1, int($5)}'`
-
-	# check if number of running dockers is higher than threshold
 	if [ -z "$file_inodes_usage" ]; then
 		echo "inode_usage: all inode usage under threshold $INODES_USAGE_MAX%  - PASSED"
 	else
@@ -65,11 +64,10 @@ test_inodes_usage() {
 }
 
 test_zombies_processes() {
-    # 3. Alert if there are zombie processes.
-	# Get number of running containers,  remove header line
-	zombie_process_number=`ps aux | awk {'print $8'}|grep -c Z`
+    # Alert if there are zombie processes.
+	zombie_process_number=`ps aux | awk {'print $8'}| grep -c Z`
 	echo -e "zombie_process: current running $zombie_process_number, threshold $ZOMBIES_PROCESS_MIN \c"
-	# check if number of running dockers is higher than threshold
+
 	if [ $zombie_process_number -gt $ZOMBIES_PROCESS_MIN ]; then
 		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo " - FAILED"
@@ -79,7 +77,7 @@ test_zombies_processes() {
 }
 
 test_listen_ports() {
-    # 4. Alert if there are more than 20 ports in listen mode.
+    # Alert if there are more than 20 ports in listen mode.
 	listen_ports=`netstat -l | grep  -w LISTEN | wc -l`
 	echo -e "listen_ports: current ports in listen mode $listen_ports, threshold $LISTEN_PORTS_MAX \c"
 	if [ $listen_ports -gt $LISTEN_PORTS_MAX ]; then
@@ -91,7 +89,7 @@ test_listen_ports() {
 }
 
 test_rmps_installed() {
-    # 5. Alert if number of installed rpms is higher than 3200
+    # Alert if number of installed rpms is higher than 3200
 	installed_rmps=`rpm -qa | wc -l`
 	echo -e "rmps_installed: current $installed_rmps, threshold $RMPS_INSTALLED_MAX \c"
 	if [ $installed_rmps -gt $RMPS_INSTALLED_MAX ]; then
@@ -175,15 +173,15 @@ help_msg() {
 
 
 ####### Handling Arguments #######
-if [[ $# -gt 0 ]]; then
-	case $1 in
-    -c)
+while getopts ":hc:" arg; do
+	case "${arg}" in
+    c)
 		# Checking if configuration file found.
-		if [ ! -e "$2" ]; then
+		if [ ! -f "$OPTARG" ]; then
 			echo "Error: Configuration file not found."
 			exit 1
 		fi
-		
+
 		echo "Config file found parsing file.."
 		# Reading Configuration file.
 		while IFS= read line ; do
@@ -194,6 +192,14 @@ if [[ $# -gt 0 ]]; then
 				# Empty line
 				:
 			elif [[ "$line" =~ ([[:space:]]*)?([a-zA-Z_]+){1}([[:space:]]*)?(<|>){1}([[:space:]]*)?([0-9]+){1} ]]; then
+				# Regex matching the following groups:
+				# 1. any number of spaces at the beging of the line
+				# 2. at least one of chars in range of A-z and underscore
+				# 3. any number of spaces
+				# 4. <|> sign.
+				# 5. any number of spaces
+				# 6. Number = [0-9]
+
 				settings_name=${BASH_REMATCH[2]};
 				settings_compertor=${BASH_REMATCH[4]};
 				settings_value=${BASH_REMATCH[6]};
@@ -245,18 +251,20 @@ if [[ $# -gt 0 ]]; then
 			else
 				echo "ignoring $line";
 			fi
-		done <"$2"
+		done <"$OPTARG"
 
       shift 2
       ;;    
-    -h|--help|help)
+    h)
       help_msg
       exit 0
       ;;
     *)
-      echo "Unknown Argument $1"; exit 128 ;;
+      echo "Unknown Argument $*"; exit 128 ;;
   esac
-fi
+done
+
+shift $((OPTIND-1))
 
 ##########################
 #### Main While loop #####
