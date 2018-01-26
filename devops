@@ -4,21 +4,41 @@
    Pay attention that your application is written in Python, placed in github and is delivered as Docker image.
 
    Solution:
-    * Git pull master branch from github.com (assuming that dev already merged to master the last version code)
-    * Run Docker build to build a image contains the fresh code been pulled from github.com
-    * Run Tests inside the Docker images (Running code tests on the build images to assure images been build as required).
-    * Publish the new build image to docker registery, tag the image both with the current version tag and latest.
-    * Connect to each Server in production, and pull the new image from docker registery
-    * Start the new image, and stop the old one
-    * Make a healthcheck to the instance and return it to production server pool.
+    CI:
+        * Developer Picking new ticket from JIRA.
+        * Commit and Push his code to new Branch in Github.com, creating PR.
+        * The PR been approved by another member/team lead/senior developer.
+        * Jenkins receving webhook from github about new PR been approved.
+        * Jenkins pull latest code and running new pipepline job to build new version
+        * Run Docker build to build a image contains the fresh code been pulled from github.com
+            * Install new pip requirements.
+            * Copyied and prepare additional requirement for new version.
+        * Run Tests (both unitest and automation tests) inside the Docker container base on the new build image.
+        * Publish the new build image to docker registery, tag the image both with the current version tag.
+        * Relase the image for QA enviroment for manual testing.
+    CD:
+        * Once, QA apporved the new version/image.
+        Deploy Scenario:
+            Using Orcestration:
+                * Run Kuberneetes/Swarm deploy of new images to all nodes/servers.
+                * The orcestrator is charge for deploying and realsing new image on the nodes.
+            OR Manaul Deploy:
+                * Connect to each Server in production, and pull the new image from docker registery.
+                * Remove the server from LB, (while deploying new image)
+                * Start the new image, and stop the old one
+                * Make a healthcheck to the instance and return it to production server pool.
+        * Collect all logs from servers to one point (ELK)
+        * Monitor server health and usage using one of availiabe services.
 
 2. What problems Agile tries to solve? (short sentence)
     * Inflexablity of developing process.
     * Long developing cycles.
     * Too much planing.
+    * Incremental Deploys/Releases
     * Customer can't make improvement during the development.
 
 3. What problems DevOps tries to solve? (short sentence)
     * Better Build, and pipeline process.
-    * Developers not focus only on developing.
-    * IT enginers, have a lack of knowladge in development and applications.
+    * Developers can focus only on development.
+    * System Security
+    * System Machine maintenances on regular basis.
