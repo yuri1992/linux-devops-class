@@ -71,7 +71,7 @@ scan_dir()
           print_verbose "‘$1/$ITEM‘ is already synced"
         fi
       else
-        if [ $IS_PROMPT_EACH -ne 0 ]; then
+        if [ "$IS_PROMPT_EACH" == true ]; then
           echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
           read response
           if [ $response != "y" ]; then
@@ -80,7 +80,7 @@ scan_dir()
           fi
         fi
 
-        if [ $IS_TEST_MODE -eq 0 ]; then
+        if [ "$IS_TEST_MODE" == false ]; then
           SYNCED=$((SYNCED + 1))
           # make sure dest folder exists:
           mkdir $2 2> /dev/null || true
@@ -100,7 +100,7 @@ scan_dir()
 
 print_verbose()
 {
-  if [ $IS_VERBOSE -gt 0 ]; then
+  if [ "$IS_VERBOSE" == true ]; then
     echo $1
   fi
 }
@@ -111,10 +111,10 @@ print_verbose()
 #------------ VAR INIT
 SOURCE=$SDIR
 DEST=$DDIR
-IS_SYNC_PERM=0
-IS_VERBOSE=0
-IS_PROMPT_EACH=0
-IS_TEST_MODE=0
+IS_SYNC_PERM=false
+IS_VERBOSE=false
+IS_PROMPT_EACH=false
+IS_TEST_MODE=false
 SCANNED=0
 SYNCED=0
 
@@ -137,16 +137,16 @@ while getopts ":hs:d:avyt" arg; do
       fi
       ;;
     a)
-      IS_SYNC_PERM=1
+      IS_SYNC_PERM=true
       ;;
     v)
-      IS_VERBOSE=1
+      IS_VERBOSE=true
       ;;
     y)
-      IS_PROMPT_EACH=1
+      IS_PROMPT_EACH=true
       ;;
     t)
-      IS_TEST_MODE=1
+      IS_TEST_MODE=true
       ;;
     h)
       description && exit 0
@@ -170,7 +170,7 @@ fi
 #------------ Source folder scan
 
 # build copy options:
-if [ $IS_SYNC_PERM -gt 0 ]; then
+if [ "$IS_SYNC_PERM" == true ]; then
   print_verbose "Enabled sync permissions"
   COPYARGS=$COPYARGS'-a'
   COPYPERMSTRING="(including permissions)"
@@ -184,4 +184,3 @@ echo "Scanned $SCANNED files"
 echo "Syned $SYNCED files"
 
 exit 0
-
