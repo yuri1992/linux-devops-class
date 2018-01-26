@@ -62,7 +62,14 @@ scan_dir()
       SCANNED=$((SCANNED + 1))
 
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
-        print_verbose "‘$1/$ITEM‘ is already synced"
+        # Files have sam content - check if premissions should be synced
+        if [ $IS_SYNC_PERM -gt 0 ]; then
+          chown --reference=$1/$ITEM $2/$ITEM
+          chmod --reference=$1/$ITEM $2/$ITEM
+          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"					
+        else
+          print_verbose "‘$1/$ITEM‘ is already synced"
+        fi
       else
         if [ $IS_PROMPT_EACH -ne 0 ]; then
           echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
