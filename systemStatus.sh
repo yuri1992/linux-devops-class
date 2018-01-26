@@ -185,11 +185,8 @@ while getopts ":hc:" arg; do
 		echo "Config file found parsing file.."
 		# Reading Configuration file.
 		while IFS= read line ; do
-			if [[ "$line" =~ ^\#(.)* ]]; then
-				# line started as a note.
-				:
-			elif [ -z "$line" ]; then
-				# Empty line
+			if [[ "$line" =~ ^\s*\#|^$ ]]; then
+				# Empty line Or comment line
 				:
 			elif [[ "$line" =~ ([[:space:]]*)?([a-zA-Z_]+){1}([[:space:]]*)?(<|>){1}([[:space:]]*)?([0-9]+){1} ]]; then
 				# Regex matching the following groups:
