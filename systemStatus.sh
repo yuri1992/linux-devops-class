@@ -39,7 +39,7 @@ function test_docker_alert () {
 	# Alert if there are more than 100 docker containers running.
 
 	# Get number of running containers,  remove header line
-	running_dockers=`docker ps -f status=running | tail +2 | wc -l`
+	running_dockers=`docker ps -f status=running | tail -n +2 | wc -l`
 	echo -e "docker_containers: current running $running_dockers, threshold $DOCKER_CONTAINER_LIMIT \c"
 	# check if number of running dockers is higher than threshold
 	if [ $running_dockers -gt $DOCKER_CONTAINER_LIMIT ]; then
@@ -123,9 +123,10 @@ function test_idle_cpu() {
 	# Get stats report for all proccessors at 3 second interval 
 	# filter Average row and cast the 12th column of the table
 	cpu_idle=`mpstat 3 1 | grep Average | awk '{print int($NF)}'`
+
 	# Original: cpu_idle=`mpstat 3 1 | grep Average | awk '{idle=int($12); print idle}'`
 	# print current cpu stat, retrived above with threshold defined at top
-	echo -e "cpu_idle    : current $cpu_idle%, minimal $CPU_IDLE_MIN% \c"
+	echo -e "cpu_idle    : current $cpu_idle%, threshold $CPU_IDLE_MIN% \c"
 
 	# check if cpu idle is lower then defind threshold, print a warning and increment failure counter
 	if [ $cpu_idle -lt $CPU_IDLE_MIN ]; then
@@ -141,7 +142,7 @@ function test_free_mb() {
 	free_mem_MB=`free -m | grep Mem | awk '{print $4}'`
 
     # print current free memory, retrived above with threshold defined at top
-	echo -e "free_mem_MB : current ${free_mem_MB}MB, minimal ${FREE_MEM_MB_MIN}MB \c"
+	echo -e "free_mem_MB : current ${free_mem_MB}MB, threshold ${FREE_MEM_MB_MIN}MB \c"
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $free_mem_MB -lt $FREE_MEM_MB_MIN ]; then
@@ -156,7 +157,7 @@ function test_free_swap() {
 	# Get memory report in MB, filter the Swap row and gets ystem's free memory size (4th col)
 	free_swap_MB=`free -m | grep Swap | awk '{print $4}'`
     # print current free swap memory, retrived above with threshold defined at top
-	echo -e "free_swap_MB : current ${free_swap_MB}MB, minimal ${FREE_SWAP_MB_MIN}MB \c"
+	echo -e "free_swap_MB : current ${free_swap_MB}MB, threshold ${FREE_SWAP_MB_MIN}MB \c"
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $free_swap_MB -lt $FREE_SWAP_MB_MIN ]; then
@@ -173,7 +174,7 @@ function test_process_count() {
     #------------ Compare statuses to thresholds
 
 	# print current free swap memory, retrived above with threshold defined at top
-	echo -e "proccess_count : current ${proccess_count}, minimal ${PROCCESS_COUNT_MAX} \c"
+	echo -e "proccess_count : current ${proccess_count}, threshold ${PROCCESS_COUNT_MAX} \c"
 
 	# check if free memory is lower then defind threshold, print a warning and increment failure counter
 	if [ $proccess_count -gt $PROCCESS_COUNT_MAX ]; then
