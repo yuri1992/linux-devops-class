@@ -61,18 +61,28 @@ scan_dir()
       SCANNED=$((SCANNED + 1))
 
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
-        print_verbose "‘$1/$ITEM‘ not copied"
+        print_verbose "‘$1/$ITEM‘ is already synced"
       else
-        SYNCED=$((SYNCED + 1))
-        # make sure dest folder exists:
-        mkdir $2 2> /dev/null || true
-        if [ $IS_TEST_MODE -eq 0 ]; then
-          cp ${CPO} $1/$ITEM $2/$ITEM
-        else
-          echo "‘$1/$ITEM‘ should be copied"
+        if [ $IS_PROMPT_EACH -ne 0 ]; then
+          echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
+          read response
+          if [ $response != "y" ]; then
+            print_verbose "‘$1/$ITEM‘ will not be copied"
+            continue  # do not sync this file
+          fi
         fi
-        #echo $1/$ITEM copied
+
+        if [ $IS_TEST_MODE -eq 0 ]; then
+          SYNCED=$((SYNCED + 1))
+          # make sure dest folder exists:
+          mkdir $2 2> /dev/null || true
+          cp ${COPYARGS} $1/$ITEM $2/$ITEM
+          echo "‘$1/$ITEM‘ copied to ‘$2/$ITEM‘" $COPYPERMSTRING
+        else
+          echo "Test Mode: ‘$1/$ITEM‘ should be copied" $COPYPERMSTRING
+        fi
       fi
+
     # else if folder - need to drill down sync
     elif [[ -d $1/$ITEM ]]; then
       scan_dir $1/$ITEM $2/$ITEM
@@ -151,19 +161,11 @@ fi
 #------------ Source folder scan
 
 # build copy options:
-TODO: REMOVE CP V, I
-  CPO='-v'
-if [ $IS_PROMPT_EACH -gt 0 ]; then
-  print_verbose "Enabled prompt each copy"
-  CPO=$CPO'i'
-fi
-
 if [ $IS_SYNC_PERM -gt 0 ]; then
   print_verbose "Enabled sync permissions"
-  CPO=$CPO'a'
+  COPYARGS=$COPYARGS'-a'
+  COPYPERMSTRING="(including permissions)"
 fi
-
-echo CPO is $CPO
 
 scan_dir $SOURCE $DEST
 
@@ -173,3 +175,4 @@ echo "Scanned $SCANNED files"
 echo "Syned $SYNCED files"
 
 exit 0
+
