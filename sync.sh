@@ -76,10 +76,10 @@ scan_dir()
           SYNCED=$((SYNCED + 1))
           # make sure dest folder exists:
           mkdir $2 2> /dev/null || true
-          cp ${CPO} $1/$ITEM $2/$ITEM
-          echo "‘$1/$ITEM‘ copied to ‘$2/$ITEM‘"
+          cp ${COPYARGS} $1/$ITEM $2/$ITEM
+          echo "‘$1/$ITEM‘ copied to ‘$2/$ITEM‘" $COPYPERMSTRING
         else
-          echo "Test Mode: ‘$1/$ITEM‘ should be copied"
+          echo "Test Mode: ‘$1/$ITEM‘ should be copied" $COPYPERMSTRING
         fi
       fi
 
@@ -163,7 +163,8 @@ fi
 # build copy options:
 if [ $IS_SYNC_PERM -gt 0 ]; then
   print_verbose "Enabled sync permissions"
-  CPO=$CPO'-a'
+  COPYARGS=$COPYARGS'-a'
+  COPYPERMSTRING="(including permissions)"
 fi
 
 scan_dir $SOURCE $DEST
