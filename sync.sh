@@ -3,12 +3,13 @@
 # Description : Sync source dir to destination dir
 # Exit code:
 #   0 - Exit
-#   1 - Illegal argument issue
+#   11 - Illegal argument issue
+#   12 - Missing paramteres issue
 # ----------------------------------
 
 #---------- Handle Signal Traps
 
-# iignore SIGINT and SIGTERM
+# Ignore SIGINT and SIGTERM
 trap : INT
 trap : TERM
 
@@ -56,14 +57,19 @@ scan_dir()
 
     # check if file
     if [ -f $1/$ITEM ]; then
-
-      #print_verbose "Scanning $1/$ITEM..."
       SCANNED=$((SCANNED + 1))
 
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
-        print_verbose "‘$1/$ITEM‘ is already synced"
+        # Files have sam content - check if premissions should be synced
+        if [ "$IS_SYNC_PERM" == true ]; then
+          chown --reference=$1/$ITEM $2/$ITEM
+          chmod --reference=$1/$ITEM $2/$ITEM
+          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
+        else
+          print_verbose "‘$1/$ITEM‘ is already synced"
+        fi
       else
-        if [ $IS_PROMPT_EACH -ne 0 ]; then
+        if [ "$IS_PROMPT_EACH" == true ]; then
           echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
           read response
           if [ $response != "y" ]; then
@@ -72,7 +78,7 @@ scan_dir()
           fi
         fi
 
-        if [ $IS_TEST_MODE -eq 0 ]; then
+        if [ "$IS_TEST_MODE" == false ]; then
           SYNCED=$((SYNCED + 1))
           # make sure dest folder exists:
           mkdir $2 2> /dev/null || true
@@ -83,7 +89,7 @@ scan_dir()
         fi
       fi
 
-    # else if folder - need to drill down sync
+    # else if folder - need to recursively drill down
     elif [[ -d $1/$ITEM ]]; then
       scan_dir $1/$ITEM $2/$ITEM
     fi
@@ -92,7 +98,7 @@ scan_dir()
 
 print_verbose()
 {
-  if [ $IS_VERBOSE -gt 0 ]; then
+  if [ "$IS_VERBOSE" == true ]; then
     echo $1
   fi
 }
@@ -103,10 +109,10 @@ print_verbose()
 #------------ VAR INIT
 SOURCE=$SDIR
 DEST=$DDIR
-IS_SYNC_PERM=0
-IS_VERBOSE=0
-IS_PROMPT_EACH=0
-IS_TEST_MODE=0
+IS_SYNC_PERM=false
+IS_VERBOSE=false
+IS_PROMPT_EACH=false
+IS_TEST_MODE=false
 SCANNED=0
 SYNCED=0
 
@@ -115,55 +121,49 @@ SYNCED=0
 while getopts ":hs:d:avyt" arg; do
   case "${arg}" in
     s)
-      if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
-        SOURCE=${OPTARG}
-      else
-        abort "${OPTARG}: invalid argument" 11
-      fi
+      SOURCE=${OPTARG}
       ;;
     d)
-      if [[ $OPTARG =~ ^[/a-zA-Z0-9]+$ ]]; then
-        DEST=${OPTARG}
-      else
-        abort "${OPTARG}: invalid argument" 12
-      fi
+      DEST=${OPTARG}
       ;;
     a)
-      IS_SYNC_PERM=1
+      IS_SYNC_PERM=true
       ;;
     v)
-      IS_VERBOSE=1
+      IS_VERBOSE=true
       ;;
     y)
-      IS_PROMPT_EACH=1
+      IS_PROMPT_EACH=true
       ;;
     t)
-      IS_TEST_MODE=1
+      IS_TEST_MODE=true
       ;;
     h)
       description && exit 0
       ;;
     *)
-      abort "$0: invalid option -- '$*'. Try '$0 -h' for more information." 13
+      abort "$0: invalid option -- '$*'. Try '$0 -h' for more information." 11
       ;;
   esac
 done
 shift $((OPTIND-1))
 
 # Folder validation
-if [ ! -d $SOURCE ]; then
-  abort "${SOURCE} is not a folder" 14
-fi
-if [ ! -d $DEST ]; then
-  abort "${DEST} is not a folder" 15
+# If env param are not set - script should not default to cwd
+if [[ -z $SOURCE || -z $DEST ]]; then
+  abort "Source or Destination folder are not defined" 12
+elif [ ! -d $SOURCE ]; then
+  abort "'${SOURCE}' is not a folder" 12
+elif  [ ! -d $DEST ]; then
+  abort "'${DEST}' is not a folder" 12
 fi
 
 #------------ Source folder scan
 
 # build copy options:
-if [ $IS_SYNC_PERM -gt 0 ]; then
+if [ "$IS_SYNC_PERM" == true ]; then
   print_verbose "Enabled sync permissions"
-  COPYARGS=$COPYARGS'-a'
+  COPYARGS='-a'
   COPYPERMSTRING="(including permissions)"
 fi
 
@@ -173,6 +173,6 @@ echo
 echo "======== Summary ========"
 echo "Scanned $SCANNED files"
 echo "Syned $SYNCED files"
+echo
 
 exit 0
-
