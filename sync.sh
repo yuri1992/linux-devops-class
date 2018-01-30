@@ -67,7 +67,7 @@ scan_dir()
         fi
 
         # if user was prompted and asked to skip
-        if ! prompt_user_if_needed; then
+        if ! prompt_user_if_needed "$1/$ITEM"; then
           print_verbose "‘$1/$ITEM‘ permissions will not be synced"
           continue
         fi
@@ -83,7 +83,7 @@ scan_dir()
       # Files are different, need to sync
       else
         # if user was prompted and asked to skip
-        if ! prompt_user_if_needed; then
+        if ! prompt_user_if_needed "$1/$ITEM"; then
           print_verbose "‘$1/$ITEM‘ will not be copied"
           continue  # do not sync this file
         fi
@@ -100,18 +100,19 @@ scan_dir()
       fi
 
     # else if folder - need to recursively drill down
-    elif [[ -d $1/$ITEM ]]; then
+    elif [ -d $1/$ITEM ]; then
       scan_dir $1/$ITEM $2/$ITEM
     fi
   done
 }
 
 # Desc: Prompt user to proceed (if needed)
+# Args: 1 = The file to prompt to user
 # Return: Boolean: true if Should continue operation, false if operation should be skipped
 prompt_user_if_needed()
 {
   if $IS_PROMPT_EACH; then
-    echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
+    echo "Do you want to sync ‘"$1"’ (y/n)?"
     read response
     if [ $response == "y" ]; then
       true
