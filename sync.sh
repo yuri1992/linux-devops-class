@@ -62,9 +62,13 @@ scan_dir()
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
         # Files have sam content - check if premissions should be synced
         if [ "$IS_SYNC_PERM" == true ]; then
-          chown --reference=$1/$ITEM $2/$ITEM
-          chmod --reference=$1/$ITEM $2/$ITEM
-          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
+          if prompt_user_if_needed; then
+            chown --reference=$1/$ITEM $2/$ITEM
+            chmod --reference=$1/$ITEM $2/$ITEM
+            echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
+          else
+            print_verbose "‘$1/$ITEM‘ permissions will not be synced"
+          fi
         else
           print_verbose "‘$1/$ITEM‘ is already synced"
         fi
@@ -96,6 +100,25 @@ scan_dir()
   done
 }
 
+# Desc: Prompt user to proceed (if needed)
+# Return: Boolean: Should continue operation 
+prompt_user_if_needed()
+{
+  if [ "$IS_PROMPT_EACH" == true ]; then
+    echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
+    read response
+    if [ $response == "y" ]; then
+      true
+    else
+      false
+    fi
+  else
+    true
+  fi
+}
+
+# Desc: Echo argument string only if verbose logging is enabled
+# Args: 1 = The string to echo 
 print_verbose()
 {
   if [ "$IS_VERBOSE" == true ]; then
