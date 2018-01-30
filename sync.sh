@@ -99,6 +99,25 @@ scan_dir()
         fi
       fi
 
+    # if file is named pipe - create the pipe file in destination folder
+    elif [ -p $1/$ITEM ]; then
+
+      # if user was prompted and asked to skip
+      if ! prompt_user_if_needed "$1/$ITEM"; then
+        print_verbose "‘$1/$ITEM‘ pipe will not be recreated"
+        continue  # do not sync this file
+      fi
+
+      if $IS_TEST_MODE; then
+        echo "Test Mode: ‘$1/$ITEM‘ pipe should be recreated in ‘$2‘"
+      else
+        SYNCED=$((SYNCED + 1))
+        # make sure dest folder exists:
+        mkdir $2 2> /dev/null || true
+        cp -a $1/$ITEM $2/$ITEM
+        echo "‘$1/$ITEM‘ pipe copied to ‘$2/$ITEM‘"
+      fi
+
     # else if folder - need to recursively drill down
     elif [ -d $1/$ITEM ]; then
       scan_dir $1/$ITEM $2/$ITEM
