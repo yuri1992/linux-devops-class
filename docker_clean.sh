@@ -72,7 +72,7 @@ fi
 
 echo Starting Docker Clean
 
-if [ "$DRY_RUN_TEST_MODE" == true ]; then
+if $DRY_RUN_TEST_MODE; then
   echo "Running in dry run, no removes will be done."
 fi
 
@@ -81,7 +81,7 @@ if [ "$DOCKER_COMPONENT" == "images" ]; then
   if [ -z "$DOCKER_FOUND_IMAGES" ]; then
     echo "No images found."
   else
-    if [ "$DRY_RUN_TEST_MODE" == false ]; then
+    if ! $DRY_RUN_TEST_MODE; then
       echo "Removing the following images matching $DOCKER_PATTERN pattern"
       echo "Removing..."
       docker rmi -f $(docker images -a | awk "\$1 ~ /$DOCKER_PATTERN/ { print \$3 }")
@@ -95,7 +95,7 @@ elif [ "$DOCKER_COMPONENT" == "ps" ]; then
   if [ -z "$DOCKER_FOUND_CONTAINERS" ]; then
     echo "No containers found."
   else
-    if [ "$DRY_RUN_TEST_MODE" == false ]; then
+    if ! $DRY_RUN_TEST_MODE; then
       echo "Removing the following containers in $DOCKER_STATUS status"
       echo "Removing..."
       docker rm -f $(docker ps -a -q -f status=$DOCKER_STATUS)
