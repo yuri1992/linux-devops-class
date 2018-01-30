@@ -60,36 +60,42 @@ scan_dir()
       SCANNED=$((SCANNED + 1))
 
       if diff $1/$ITEM $2/$ITEM > /dev/null 2>&1 ; then
-        # Files have sam content - check if premissions should be synced
-        if [ "$IS_SYNC_PERM" == true ]; then
-          if prompt_user_if_needed; then
-            chown --reference=$1/$ITEM $2/$ITEM
-            chmod --reference=$1/$ITEM $2/$ITEM
-            echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
-          else
-            print_verbose "‘$1/$ITEM‘ permissions will not be synced"
-          fi
-        else
+        # Files have same content - check if premissions should be synced or skipped
+        if ! $IS_SYNC_PERM; then
           print_verbose "‘$1/$ITEM‘ is already synced"
-        fi
-      else
-        if [ "$IS_PROMPT_EACH" == true ]; then
-          echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
-          read response
-          if [ $response != "y" ]; then
-            print_verbose "‘$1/$ITEM‘ will not be copied"
-            continue  # do not sync this file
-          fi
+          continue
         fi
 
-        if [ "$IS_TEST_MODE" == false ]; then
+        # if user was prompted and asked to skip
+        if ! prompt_user_if_needed; then
+          print_verbose "‘$1/$ITEM‘ permissions will not be synced"
+          continue
+        fi
+
+        if $IS_TEST_MODE; then
+          echo "Test Mode: ‘$1/$ITEM‘ permissions should be copied"
+        else
+          chown --reference=$1/$ITEM $2/$ITEM
+          chmod --reference=$1/$ITEM $2/$ITEM
+          echo "Copied permissions and owner from ‘$1/$ITEM‘ to ‘$2/$ITEM‘"
+        fi
+
+      # Files are different, need to sync
+      else
+        # if user was prompted and asked to skip
+        if ! prompt_user_if_needed; then
+          print_verbose "‘$1/$ITEM‘ will not be copied"
+          continue  # do not sync this file
+        fi
+
+        if $IS_TEST_MODE; then
+          echo "Test Mode: ‘$1/$ITEM‘ should be copied" $COPYPERMSTRING
+        else
           SYNCED=$((SYNCED + 1))
           # make sure dest folder exists:
           mkdir $2 2> /dev/null || true
           cp ${COPYARGS} $1/$ITEM $2/$ITEM
           echo "‘$1/$ITEM‘ copied to ‘$2/$ITEM‘" $COPYPERMSTRING
-        else
-          echo "Test Mode: ‘$1/$ITEM‘ should be copied" $COPYPERMSTRING
         fi
       fi
 
@@ -104,7 +110,7 @@ scan_dir()
 # Return: Boolean: Should continue operation 
 prompt_user_if_needed()
 {
-  if [ "$IS_PROMPT_EACH" == true ]; then
+  if $IS_PROMPT_EACH; then
     echo "Do you want to sync ‘$1/$ITEM’ (y/n)?"
     read response
     if [ $response == "y" ]; then
@@ -121,7 +127,7 @@ prompt_user_if_needed()
 # Args: 1 = The string to echo 
 print_verbose()
 {
-  if [ "$IS_VERBOSE" == true ]; then
+  if $IS_VERBOSE; then
     echo $1
   fi
 }
@@ -184,7 +190,7 @@ fi
 #------------ Source folder scan
 
 # build copy options:
-if [ "$IS_SYNC_PERM" == true ]; then
+if $IS_SYNC_PERM; then
   print_verbose "Enabled sync permissions"
   COPYARGS='-a'
   COPYPERMSTRING="(including permissions)"
