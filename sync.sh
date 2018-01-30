@@ -107,7 +107,7 @@ scan_dir()
 }
 
 # Desc: Prompt user to proceed (if needed)
-# Return: Boolean: Should continue operation 
+# Return: Boolean: true if Should continue operation, false if operation should be skipped
 prompt_user_if_needed()
 {
   if $IS_PROMPT_EACH; then
