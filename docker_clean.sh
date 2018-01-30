@@ -1,8 +1,9 @@
-#/bin/bash
+# /bin/bash
 # -----------------------------------------------
 # Description : Remove images/containers
 # Input		  : see help_msg
-# Exit code   : 0
+# Exit code   : 0 - Success
+#               128 - Invalid Arguments
 # -----------------------------------------------
 
 DOCKER_COMPONENT="";
@@ -10,7 +11,7 @@ DRY_RUN_TEST_MODE=false
 DOCKER_STATUS="";
 DOCKER_PATTERN="";
 
-function help_msg() {
+help_msg() {
   echo "docker_clean [-c ps -s <status> | -c images -o <pattern> ] [-t]
         -c ps -s STATUS : remove all the docker containers with a given status. Status can be “running” or “exited”.
         -c images -o pattern : remove all the images that match the pattern.
@@ -18,38 +19,38 @@ function help_msg() {
 }
 
 # Parse Parameters #
-while [[ $# -gt 0 ]] ; do
-  case $1 in
-    -c)
-      case "$2" in
-        "ps") DOCKER_COMPONENT='ps' ; shift 2 ;;
-        "images") DOCKER_COMPONENT='images' ; shift 2 ;;
-        *) echo "Unknown Option for -c argument $2, valid options:{images,ps} "; exit 128; ;;
+while getopts ":hc:s:o:t" arg; do
+  case "${arg}" in
+    c)
+      case "$OPTARG" in
+        "ps") DOCKER_COMPONENT='ps' ; ;;
+        "images") DOCKER_COMPONENT='images' ; ;;
+        *) echo "Unknown Option for -c argument $OPTARG, valid options:{images,ps} "; exit 128; ;;
       esac
       ;;    
-    -s)
-      case "$2" in
-        "running") DOCKER_STATUS='running' ; shift 2 ;;
-        "exited") DOCKER_STATUS='exited' ; shift 2 ;;
-        *) echo "Unknown Option for -s argument $2, valid options:{running,exited} "; exit 128; ;;
+    s)
+      case "$OPTARG" in
+        "running") DOCKER_STATUS='running' ;;
+        "exited") DOCKER_STATUS='exited' ;;
+        *) echo "Unknown Option for -s argument $OPTARG, valid options:{running,exited} "; exit 128; ;;
       esac
       ;;
-    -o)
-      DOCKER_PATTERN=$2
-      shift 2
+    o)
+      DOCKER_PATTERN=$OPTARG
       ;;
-    -t)
+    t)
       DRY_RUN_TEST_MODE=true
-      shift
       ;;
-    -h|--help|help)
+    h|--help|help)
       help_msg
       exit 0
       ;;
     *)
-      echo "Unknown Argument $1"; exit 128 ;;
+      echo "Unknown Argument $*"; exit 128 ;;
   esac
 done
+
+shift $((OPTIND-1))
 
 if [ -z "$DOCKER_COMPONENT" ]; then
   echo "you need to set -c <ps|images>"
@@ -76,18 +77,17 @@ if [ "$DRY_RUN_TEST_MODE" == true ]; then
 fi
 
 if [ "$DOCKER_COMPONENT" == "images" ]; then
-  DOCKER_FOUND_IMAGES=$(docker images -a | awk "\$1 ~ /$DOCKER_PATTERN/ { print \$1,\$3}")
+  DOCKER_FOUND_IMAGES=$(docker images -a | awk "\$1 ~ /$DOCKER_PATTERN/ { print \$1}")
   if [ -z "$DOCKER_FOUND_IMAGES" ]; then
     echo "No images found."
   else
     if [ "$DRY_RUN_TEST_MODE" == false ]; then
       echo "Removing the following images matching $DOCKER_PATTERN pattern"
       echo "Removing..."
-      DOCKER_IMAGES_IDS=$(docker images -a | awk "\$1 ~ /$DOCKER_PATTERN/ { print \$3 }")
-      docker rmi -f $DOCKER_IMAGES_IDS
+      docker rmi -f $(docker images -a | awk "\$1 ~ /$DOCKER_PATTERN/ { print \$3 }")
     else
       echo "Running in test mode, the following images would be deleted"
-      echo $DOCKER_FOUND_IMAGES
+      printf '%s\n' "${DOCKER_FOUND_IMAGES[@]}"
     fi
   fi
 elif [ "$DOCKER_COMPONENT" == "ps" ]; then
@@ -96,15 +96,17 @@ elif [ "$DOCKER_COMPONENT" == "ps" ]; then
     echo "No containers found."
   else
     if [ "$DRY_RUN_TEST_MODE" == false ]; then
-      echo "Removing the following containers in $DOCKER_STATUS"
+      echo "Removing the following containers in $DOCKER_STATUS status"
       echo "Removing..."
-      DOKCER_IDS_TO_DELETE=$(docker ps -a -q -f status=$DOCKER_STATUS);
-      docker rm -f $DOKCER_IDS_TO_DELETE
+      docker rm -f $(docker ps -a -q -f status=$DOCKER_STATUS)
     else
       echo "Running in test mode, the following images would be deleted"
-      echo $DOCKER_FOUND_CONTAINERS
+      printf '%s\n' "${DOCKER_FOUND_CONTAINERS[@]}"
     fi
   fi
+else
+  echo "Invalid Component been provided"
+  exit 128
 fi
 
 exit 0

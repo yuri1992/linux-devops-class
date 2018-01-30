@@ -2,15 +2,9 @@
 # -----------------------------------------------
 # Description : Check the system status in terms of cpu_idle and free_mem.
 # Input		  : None
-# Exit code   : Number of failed checks.
+# Exit code   : 128 - unkown argumet
 # -----------------------------------------------
 
-
-# Improve the systemStatus.sh script by adding more system verification and improvements as follow:
-
-# 7. Refactor the script:
-
-# Thresholds for the checks
 CPU_IDLE_MIN=90	# Thresholds for CPU Idle percentage
 FREE_MEM_MB_MIN=60 # Thresholds for free memory size
 FREE_SWAP_MB_MIN=100 # Thresholds for free swap size
@@ -22,26 +16,26 @@ ZOMBIES_PROCESS_MIN=0 # Threshold for zombiees process
 LISTEN_PORTS_MAX=20 # Threshold Listen ports
 RMPS_INSTALLED_MAX=3200 #hreshold for installed rmps
 
+COUNT_FAILED_TEST=0
+COUNTER_ITERATION=0 # Add check COUNTER_ITERATION to debug bg deamon runs
 
-count_failed_test=0
-counter=0 # Add check counter to debug bg deamon runs
-
-function test_docker_alert () {
+test_docker_alert () {
 	# Alert if there are more than 100 docker containers running.
 
-	# Get number of running containers,  remove header line
-	running_dockers=`docker ps -f status=running | tail -n +2 | wc -l`
+	# Get number of running containers.
+	running_dockers=`docker ps -q -f status=running | wc -l`
 	echo -e "docker_containers: current running $running_dockers, threshold $DOCKER_CONTAINER_LIMIT \c"
+
 	# check if number of running dockers is higher than threshold
 	if [ $running_dockers -gt $DOCKER_CONTAINER_LIMIT ]; then
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo " - FAILED"
 	else
 		echo " - PASSED"
 	fi
 }
 
-function test_file_system () {
+test_file_system () {
     # Check file-systems size usage, alert if there is a file system with more than 90% usage.
 	file_system_usage=`df | awk 'int($5) > $FILE_SYSTEM_USAGE_MAX {print $1, int($5)}'`
 	
@@ -49,67 +43,64 @@ function test_file_system () {
 	if [ -z "$file_system_usage" ]; then
 		echo "fs_usage: all fs usage under $FILE_SYSTEM_USAGE_MAX%  - PASSED"
 	else
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo "fs_usage: fs usage is higher than $FILE_SYSTEM_USAGE_MAX% - FAILED"
 		#echo "$file_system_usage over threshold $FILE_SYSTEM_USAGE_MAX  - FAILED"
 	fi
 }
 
-function test_inodes_usage() {
+test_inodes_usage() {
     # Alert if inodes usage is higher than 90% on a file system.
-	
-	# Check file-systems size usage, alert if there is a file system with more than 90% usage.
-	file_inodes_usage=`df -hi | grep -v '-' | awk 'int($5) > $INODES_USAGE_MAX {print $1, int($5)}'`
+	# Check all inodes, filter inodes without IUse numeric value.
+	file_inodes_usage=`df -hi | awk '$5 != "-" && int($5) > $INODES_USAGE_MAX {print $1, int($5)}'`
 
-	# check if number of running dockers is higher than threshold
 	if [ -z "$file_inodes_usage" ]; then
 		echo "inode_usage: all inode usage under threshold $INODES_USAGE_MAX%  - PASSED"
 	else
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo "inode_usage: inode usage is higher than $INODES_USAGE_MAX% - FAILED"
 		#echo "$file_inodes_usage over threshold $INODES_USAGE_MAX  - FAILED"
 	fi
 }
 
-function test_zombies_processes() {
-    # 3. Alert if there are zombie processes.
-	# Get number of running containers,  remove header line
-	zombie_process_number=`ps aux | awk {'print $8'}|grep -c Z`
+test_zombies_processes() {
+    # Alert if there are zombie processes.
+	zombie_process_number=`ps aux | awk {'print $8'}| grep -c Z`
 	echo -e "zombie_process: current running $zombie_process_number, threshold $ZOMBIES_PROCESS_MIN \c"
-	# check if number of running dockers is higher than threshold
+
 	if [ $zombie_process_number -gt $ZOMBIES_PROCESS_MIN ]; then
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo " - FAILED"
 	else
 		echo " - PASSED"
 	fi
 }
 
-function test_listen_ports() {
-    # 4. Alert if there are more than 20 ports in listen mode.
+test_listen_ports() {
+    # Alert if there are more than 20 ports in listen mode.
 	listen_ports=`netstat -l | grep  -w LISTEN | wc -l`
 	echo -e "listen_ports: current ports in listen mode $listen_ports, threshold $LISTEN_PORTS_MAX \c"
 	if [ $listen_ports -gt $LISTEN_PORTS_MAX ]; then
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo " - FAILED"
 	else
 		echo " - PASSED"
 	fi
 }
 
-function test_rmps_installed() {
-    # 5. Alert if number of installed rpms is higher than 3200
+test_rmps_installed() {
+    # Alert if number of installed rpms is higher than 3200
 	installed_rmps=`rpm -qa | wc -l`
 	echo -e "rmps_installed: current $installed_rmps, threshold $RMPS_INSTALLED_MAX \c"
 	if [ $installed_rmps -gt $RMPS_INSTALLED_MAX ]; then
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 		echo " - FAILED"
 	else
 		echo " - PASSED"
 	fi
 }
 
-function test_idle_cpu() {
+test_idle_cpu() {
     # get average cpu idle percentage:
 	# Get stats report for all proccessors at 3 second interval 
 	# filter Average row and cast the 12th column of the table
@@ -119,47 +110,47 @@ function test_idle_cpu() {
 	# print current cpu stat, retrived above with threshold defined at top
 	echo -e "cpu_idle    : current $cpu_idle%, threshold $CPU_IDLE_MIN% \c"
 
-	# check if cpu idle is lower then defind threshold, print a warning and increment failure counter
+	# check if cpu idle is lower then defind threshold, print a warning and increment failure COUNTER_ITERATION
 	if [ $cpu_idle -lt $CPU_IDLE_MIN ]; then
 		echo " - FAILED" # Addiding space to echo for nicer daemon printout 
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 	else 
 		echo " - PASSED"
 	fi
 }
 
-function test_free_mb() {
+test_free_mb() {
 	# Get memory report in MB, filter the Memory row and get system's free memory size (4th col)
 	free_mem_MB=`free -m | grep Mem | awk '{print $4}'`
 
     # print current free memory, retrived above with threshold defined at top
 	echo -e "free_mem_MB : current ${free_mem_MB}MB, threshold ${FREE_MEM_MB_MIN}MB \c"
 
-	# check if free memory is lower then defind threshold, print a warning and increment failure counter
+	# check if free memory is lower then defind threshold, print a warning and increment failure COUNTER_ITERATION
 	if [ $free_mem_MB -lt $FREE_MEM_MB_MIN ]; then
 		echo " - FAILED"
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 	else 
 		echo " - PASSED"
 	fi
 }
 
-function test_free_swap() {
+test_free_swap() {
 	# Get memory report in MB, filter the Swap row and gets ystem's free memory size (4th col)
 	free_swap_MB=`free -m | grep Swap | awk '{print $4}'`
     # print current free swap memory, retrived above with threshold defined at top
 	echo -e "free_swap_MB : current ${free_swap_MB}MB, threshold ${FREE_SWAP_MB_MIN}MB \c"
 
-	# check if free memory is lower then defind threshold, print a warning and increment failure counter
+	# check if free memory is lower then defind threshold, print a warning and increment failure COUNTER_ITERATION
 	if [ $free_swap_MB -lt $FREE_SWAP_MB_MIN ]; then
 		echo " - FAILED"
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 	else 
 		echo " - PASSED"
 	fi
 }
 
-function test_process_count() {
+test_process_count() {
 	# count rows of proccess print out, exept title row and commands used in this piped command
 	proccess_count=`ps -e | egrep -v "PID|ps|grep|wc" | wc -l`
     #------------ Compare statuses to thresholds
@@ -167,36 +158,45 @@ function test_process_count() {
 	# print current free swap memory, retrived above with threshold defined at top
 	echo -e "proccess_count : current ${proccess_count}, threshold ${PROCCESS_COUNT_MAX} \c"
 
-	# check if free memory is lower then defind threshold, print a warning and increment failure counter
+	# check if free memory is lower then defind threshold, print a warning and increment failure COUNTER_ITERATION
 	if [ $proccess_count -gt $PROCCESS_COUNT_MAX ]; then
 		echo " - FAILED"
-		count_failed_test=`expr $count_failed_test + 1`
+		COUNT_FAILED_TEST=`expr $COUNT_FAILED_TEST + 1`
 	else 
 		echo " - PASSED"
 	fi
 }
 
-function help_msg() {
+help_msg() {
 	echo "systemStatus  [–c <file> | Configuration file describing limit of alerts]"
 }
 
-if [[ $# -gt 0 ]]; then
-	case $1 in
-    -c)
+
+####### Handling Arguments #######
+while getopts ":hc:" arg; do
+	case "${arg}" in
+    c)
 		# Checking if configuration file found.
-		if [ ! -e "$2" ]; then
+		if [ ! -f "$OPTARG" ]; then
 			echo "Error: Configuration file not found."
 			exit 1
 		fi
-		
+
 		echo "Config file found parsing file.."
 		# Reading Configuration file.
 		while IFS= read line ; do
-			if [[ "$line" =~ ^\#(.)* ]]; then
-				:
-			elif [ -z "$line" ]; then
+			if [[ "$line" =~ ^\s*\#|^$ ]]; then
+				# Empty line Or comment line
 				:
 			elif [[ "$line" =~ ([[:space:]]*)?([a-zA-Z_]+){1}([[:space:]]*)?(<|>){1}([[:space:]]*)?([0-9]+){1} ]]; then
+				# Regex matching the following groups:
+				# 1. any number of spaces at the beging of the line
+				# 2. at least one of chars in range of A-z and underscore
+				# 3. any number of spaces
+				# 4. <|> sign.
+				# 5. any number of spaces
+				# 6. Number = [0-9]
+
 				settings_name=${BASH_REMATCH[2]};
 				settings_compertor=${BASH_REMATCH[4]};
 				settings_value=${BASH_REMATCH[6]};
@@ -231,7 +231,7 @@ if [[ $# -gt 0 ]]; then
 						LISTEN_PORTS_MAX=$settings_value
 					;;
 					rmps_installed)
-						echo "rmps_installed  found, $settings_value"
+						echo "rmps_installed found, $settings_value"
 						RMPS_INSTALLED_MAX=$settings_value
 					;;
 					process_running)
@@ -248,25 +248,31 @@ if [[ $# -gt 0 ]]; then
 			else
 				echo "ignoring $line";
 			fi
-		done <"$2"
+		done <"$OPTARG"
 
       shift 2
       ;;    
-    -h|--help|help)
+    h)
       help_msg
       exit 0
       ;;
     *)
-      echo "Unknown Argument $1"; exit 128 ;;
+      echo "Unknown Argument $*"; exit 128 ;;
   esac
-fi
+done
 
-echo -e "Starting moniroting...\n"
+shift $((OPTIND-1))
+
+##########################
+#### Main While loop #####
+##########################
+echo "Starting moniroting..."
 
 while [ true ]; do
-#----------- Get system statistics
-	counter=`expr $counter + 1`
-	echo "Checking status [#$counter]..."
+	COUNTER_ITERATION=`expr $COUNTER_ITERATION + 1`
+	echo "Checking status [#$COUNTER_ITERATION]..."
+
+	#### Running test functions #####
 	test_file_system;
 	test_inodes_usage;
 	test_zombies_processes;
@@ -280,18 +286,16 @@ while [ true ]; do
 
 	current_date=`date`
 	# print a summary of the status checks 
-	if [ $count_failed_test -gt 0 ]; then
+	if [ $COUNT_FAILED_TEST -gt 0 ]; then
 		# print Not OK (with date) and exit with error code 1
 		echo "====> SUM: Status NOT OK [$current_date]"	
 	else
 		# print OK (with date) and exit with success code 0
 		echo "====> SUM: Status OK [$current_date]"
 	fi
-	count_failed_test=0
+	COUNT_FAILED_TEST=0
 
 	sleep 2
 done
-
-
 
 exit 0
