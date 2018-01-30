@@ -99,8 +99,8 @@ scan_dir()
         fi
       fi
 
-    # if file is named pipe - create the pipe file in destination folder
-    elif [ -p $1/$ITEM ]; then
+    # if file is named pipe - create the pipe file in destination folder if not exist yet
+    elif [ -p $1/$ITEM -a ! -p $2/$ITEM ]; then
 
       # if user was prompted and asked to skip
       if ! prompt_user_if_needed "$1/$ITEM"; then
